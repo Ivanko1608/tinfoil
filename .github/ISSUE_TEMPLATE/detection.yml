@@ -1,0 +1,29 @@
+name: False positive or missed leak
+description: The scanner flagged something harmless, or missed something it should catch.
+labels: [detection]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not paste the real value.** Not the key, not the email, not the ID number.
+        Describe its shape instead (`sk_live_` + 24 alphanumerics), or build an obviously fake one.
+        A leak report that leaks is the one bug we can't fix.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What happened?
+      options: [False positive, Missed leak]
+    validations:
+      required: true
+  - type: input
+    id: detector
+    attributes:
+      label: Detector id (for false positives)
+      placeholder: e.g. pii/phone
+  - type: textarea
+    id: shape
+    attributes:
+      label: Shape of the string and where it appeared
+      description: File type, surrounding context, a synthetic example.
+    validations:
+      required: true

@@ -1,6 +1,22 @@
+<p align="center">
+  <img src=".github/social-preview.png" width="760" alt="tinfoil: your paranoid friend reads it before the internet does">
+</p>
+
+<p align="center">
+  <a href="https://github.com/Ivanko1608/tinfoil/actions/workflows/test.yml"><img src="https://github.com/Ivanko1608/tinfoil/actions/workflows/test.yml/badge.svg" alt="tests"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/python-3.9%2B%2C%20stdlib%20only-informational" alt="Python 3.9+, stdlib only">
+  <a href="https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview"><img src="https://img.shields.io/badge/Claude-skill-d97757" alt="Claude skill"></a>
+</p>
+
 # tinfoil
 
-**Your paranoid friend reads it before the internet does.**
+```text
+/plugin marketplace add Ivanko1608/tinfoil
+/plugin install tinfoil@tinfoil
+```
+
+<sub>That's Claude Code. Claude.ai, Desktop, pre-commit and GitHub Actions are [below](#install).</sub>
 
 Ask Claude "is this safe to post?" and get a real answer. You don't have to wear the hat; it wears it for you.
 
@@ -122,6 +138,30 @@ python3 $S . --json --fail-on medium     # for CI
 
 It exits `1` when something reaches `--fail-on` (default `high`), so it drops straight into a pre-commit hook or CI step. This repo scans itself too; see [`.leakscanignore`](.leakscanignore) for the handful of intentional matches.
 
+#### As a pre-commit hook
+
+With [pre-commit](https://pre-commit.com), add this to `.pre-commit-config.yaml`. It scans only what you're about to commit:
+
+```yaml
+repos:
+  - repo: https://github.com/Ivanko1608/tinfoil
+    rev: v1.0.0
+    hooks:
+      - id: tinfoil
+```
+
+#### As a GitHub Action
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0          # needed to scan history; the action refuses a shallow clone
+- uses: Ivanko1608/tinfoil@v1.0.0
+  with:
+    history: "true"         # every commit, every branch
+    fail-on: high
+```
+
 ### Personal denylist
 
 Neither Claude nor the scanner can know that "Acme" is your employer or that your kid's name is Sam. Tell them once, and the skill offers to draft this list for you:
@@ -146,7 +186,7 @@ Add `fp:<fingerprint>`, `detector:<id>`, or a path glob to a `.leakscanignore` f
 
 ## Contributing
 
-Issues and PRs are welcome, especially new credential formats, national ID checksums for more countries, and false-positive reports. Run the tests with:
+Issues and PRs are welcome (just never paste a real secret into one), especially new credential formats, national ID checksums for more countries, and false-positive reports. Run the tests with:
 
 ```bash
 python3 -m unittest discover -s tests -v
@@ -158,3 +198,7 @@ Test fixtures are assembled at runtime from string fragments, so this repo never
 ## License
 
 [MIT](LICENSE). Free to use, fork, and ship.
+
+---
+
+<sub>Made by <a href="https://github.com/Ivanko1608">@Ivanko1608</a>, backend engineer. I also make systems-programming videos as <b>Compiles Eventually</b> on YouTube.</sub>
