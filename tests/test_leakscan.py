@@ -29,8 +29,11 @@ IBAN = "GB82 " + "WEST 1234 5698 7654 32"  # the classic mod-97 valid sample
 
 
 def run(*args, stdin=None):
-    r = subprocess.run([sys.executable, SCANNER, "--json", "--fail-on", "none",
-                        *args], capture_output=True, text=True, input=stdin)
+    # run from an empty dir so this repo's own .leakscanignore can't leak in
+    with tempfile.TemporaryDirectory() as cwd:
+        r = subprocess.run([sys.executable, SCANNER, "--json", "--fail-on",
+                            "none", *args], capture_output=True, text=True,
+                           input=stdin, cwd=cwd)
     if r.returncode != 0:
         raise AssertionError(r.stderr)
     return json.loads(r.stdout)

@@ -5,8 +5,11 @@ skills/leak-check/scripts/leakscan.py
 # Tests assemble fake leaks on purpose (fragments only, nothing real).
 tests/*
 
-# Documentation examples
+# Documentation examples: "CONFIDENTIAL" in the scanner coverage list,
+# placeholder emails in the references
 fp:202fefa87996
 fp:15521a7d24f2
-fp:efe45491b5fd
 fp:e25ef8072934
+# The README's example report quotes the fictional demo repo
+fp:02c324382522
+fp:fd26867a4692

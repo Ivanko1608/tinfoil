@@ -2,74 +2,73 @@
 
 **Ask Claude "is this safe to post?" and get a real answer.**
 
-A free, open-source [Claude skill](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview) that checks anything you're about to make public: a repo, a screenshot, a PDF, a blog post. It looks for credentials, personal data, and the stuff you didn't realize you were giving away.
+A free, open-source [Claude skill](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview) that reviews anything you're about to make public (a repo, a screenshot, a PDF, a blog post) the way someone trying to find you would. Then it tells you whether to ship it.
 
-You deleted that `.env` file. Git didn't.
+Here's what that looks like on a small demo repo. The company and customer names are fictional; the report is real skill output.
 
-```text
-$ leakscan.py my-side-project --history
-leakscan: 2 files, 2 commits | 1 critical, 2 high, 3 medium, 0 low, 1 info
+> **You:** I'm about to make order-sync public on my GitHub. Anything I should worry about?
+>
+> **Claude:** Quick question first: is this going out under your real name, or should it be unlinkable to you?
+>
+> **You:** Real name, it's for my portfolio.
+>
+> **Claude:**
+>
+> ### Verdict: Do not publish (yet)
+>
+> The leaked key is fixable in ten minutes. The bigger problem is that this repo looks like your employer's code, and it makes you easy to identify.
+>
+> **Must fix**
+>
+> 1. **AWS key in git history.** `.env` was deleted in `8883ac8`, but `AKIA••••••••••VB` is still in `38f4844`. Anyone who clones the repo gets it, and bots scrape new public repos within minutes. **Rotate the key first**, then strip it with `git filter-repo`. Deleting the file did nothing.
+> 2. **This may not be yours to publish.** The first commit message is *"initial import from contoso-logistics/order-sync"*, and the README says you wrote it while working on Contoso's logistics team. Even with every secret stripped, code written for an employer usually belongs to the employer. Check your contract before publishing anything. (Not legal advice, but definitely a question to settle first.)
+> 3. **Customer data in `tests/fixtures/orders.csv`.** Northwind Traders and Fabrikam, with cities and order totals. If those are real Contoso customers, you'd be publishing a third party's business data. Replace them with obviously synthetic rows.
+> 4. **The README identifies you, and your routine.** *"Only backend dev on Contoso's logistics team"* + *"I'm in Toronto"* + *"push most changes before 9am"* narrows it to one person. Commit timestamps (−04:00, 07:41 and 08:12) confirm the schedule. On top of that, `docs/dashboard.jpg` has GPS coordinates embedded, 43.65, −79.38, which is downtown Toronto. None of these is a problem alone; together they give your employer, city and daily routine to anyone who reads it.
+>
+> **Should fix**
+>
+> - `orders-replica.contoso.internal`, *"fell over at ~4M rows"* and *"hotfix for CL-2291 prod outage"* map a real company's internal infrastructure and incidents. Generalize them or cut them.
+> - Both commits carry a personal Gmail address. Switch to your GitHub noreply address and rewrite the author with `--mailmap`.
+> - `/Users/jsmith/` in the README shows your local username. Use `cd order-sync` instead.
+>
+> **Coverage:** 3 files and 2 commits on all branches; image checked for metadata only (the demo image has no visual content to review). No issues, PRs or packages exist yet. Step-by-step fixes are in `references/remediation.md`; I can walk you through them.
 
-== CRITICAL ==
-  secret/aws_access_key  .env:1 [history:9c02b57af9]
-      AKIA••••••••••VB (20 chars)   fp:34dde4add3d4
-      note: not in current files but still in git history
+Only the first item and half of the fourth come from pattern matching. A secret scanner would have flagged the key, the GPS tag and the hostname, and missed the rest: whose code it is, whose data it is, and how three harmless sentences identify one person.
 
-== HIGH ==
-  file/risky_file  .env [history]
-      note: environment file - deleted from HEAD but still in history
-  metadata/exif_gps  docs/screenshot.jpg
-      40.4••••••••••61 (17 chars)   fp:6a34d1276e1b
-      note: image embeds GPS location
+## What the skill does that a scanner can't
 
-== MEDIUM ==
-  identity/commit_identity  .git [history]
-      Jane••••••••••m> (32 chars)
-      note: author/committer identity is published with every commit
-  identity/home_path  README.md:2
-      note: home path reveals local username
-  infra/internal_hostname  README.md:3
-```
+Secret scanners are good at API keys. But most of what gets people doxxed, fired or phished isn't an API key. The skill makes Claude do the parts that take judgment:
 
-That's real output from a two-commit demo repo. The skill then has Claude read the code, docs, commit messages, and images the way a bored stranger with a search engine would. You get back a verdict (**Safe to publish**, **Fix first**, or **Do not publish (yet)**) plus exact fixes.
+- **Asks who you're publishing as.** Your email on your portfolio is fine; the same email in a project meant to be unlinkable to you is the worst finding in the repo. The severity of everything depends on that answer.
+- **Reads like an adversary.** It goes through READMEs, comments, commit messages, branch names, fixtures, notebooks, CI files and docs, asking one question: could a stranger get from this to a name, address, employer, client, family member, or a way into a system?
+- **Looks at your images.** Browser tabs, taskbars, notification previews, terminal prompts, reflections, street signs through the window.
+- **Connects the dots.** City + job title + company size + timezone + one anecdote is often enough to name someone. It reports that as a single finding, not five nitpicks.
+- **Flags work that isn't yours to share.** Employer code, client data, internal ticket keys and codenames, even with every secret stripped out.
+- **Gives a verdict, not a dump.** *Safe to publish*, *Fix first*, or *Do not publish (yet)*. Then must-fix / should-fix / your-call, with false positives triaged away instead of buried under 40 maybes.
+- **Knows the fix.** Rotate before you rewrite history, because deleting a pushed secret is cosmetic. Strip PDF metadata in a way that doesn't leave it recoverable. Watch out for screenshot crops that keep the uncropped data.
+- **Checks its own writing.** When Claude drafts your README, blog post or video description, it makes sure it didn't "helpfully" include your employer's name from earlier in the conversation.
+- **Never repeats your secrets.** Findings are masked (`AKIA••••••••••VB`), so the chat transcript doesn't become a second leak. It never runs your project or sends your material anywhere.
+- **Is honest about coverage.** Every report says what *wasn't* checked. A clean report isn't a certificate.
 
-## Why this exists
+The full checklist Claude works through is in [`references/contextual-leaks.md`](skills/leak-check/references/contextual-leaks.md). It's worth a read even if you never install anything.
 
-Secret scanners are good at finding API keys. But most of what gets people doxxed, fired, or phished isn't an API key:
+## Under the hood
 
-- the photo in your README with GPS coordinates of your flat
-- your personal Gmail on every commit of the "anonymous" project
-- `/Users/firstname.lastname/` in a stack trace
-- the client's name in a test fixture, or a Jira ticket key in a commit message
-- the "deleted" text in a Word doc's tracked changes
-- a screenshot whose browser tabs say exactly where you work
-- "away all of August" in a blog post, next to your city
+To get the mechanical part right, the skill ships with [`leakscan.py`](skills/leak-check/scripts/leakscan.py), a dependency-free, read-only Python scanner that Claude runs first. It's built for high recall on known patterns; triage and judgment happen afterwards.
 
-Regex can't catch most of that. An LLM reading carefully can. This skill combines both.
+<details>
+<summary>What the scanner covers</summary>
 
-## How it works
+- **Credentials:** AWS, GitHub, GitLab, Slack, Stripe, Google, Anthropic, OpenAI, Hugging Face, Telegram, SendGrid, npm, WireGuard, JWTs, private keys, passwords in URLs and `.env` files
+- **Personal data:** emails, phone numbers, dates of birth, street addresses
+- **Financial and government IDs, checksum-validated:** cards (Luhn), IBANs (mod-97), Spanish DNI/NIE, Russian SNILS/INN, passports, US SSNs
+- **Infrastructure:** internal hostnames, IPs, Slack/Atlassian/SharePoint workspace URLs, Google Docs links, "CONFIDENTIAL" markers
+- **Identity:** home-directory paths, `user@hostname` shell prompts, GPS coordinates
+- **Metadata:** EXIF GPS, owner and serial in JPEG/PNG/WebP/TIFF; author, comments and tracked changes in Office files; author and earlier revisions in PDFs
+- **Git:** every commit on every branch, files deleted but still in history, author emails, commit timezones
+- **Risky files:** `.env`, SSH keys, `.har`, `tfstate`, shell history, database dumps, and more
 
-Three layers, each catching what the others miss:
-
-1. **Mechanical scan** with [`leakscan.py`](skills/leak-check/scripts/leakscan.py): pure Python stdlib, no dependencies, read-only.
-   - **Credentials:** AWS, GitHub, GitLab, Slack, Stripe, Google, Anthropic, OpenAI, Hugging Face, Telegram, SendGrid, npm, WireGuard, JWTs, private keys, passwords in URLs and `.env` files
-   - **Personal data:** emails, phone numbers, dates of birth, street addresses
-   - **Financial and government IDs, checksum-validated:** cards (Luhn), IBANs (mod-97), Spanish DNI/NIE, Russian SNILS/INN, passports, US SSNs
-   - **Infrastructure:** internal hostnames, IPs, Slack/Atlassian/SharePoint workspace URLs, Google Docs links, "CONFIDENTIAL" markers
-   - **Identity:** home-directory paths, `user@hostname` shell prompts, GPS coordinates
-   - **Metadata:** EXIF GPS, owner and serial in JPEG/PNG/WebP/TIFF; author, comments and tracked changes in Office files; author and earlier revisions in PDFs
-   - **Git:** every commit on every branch, files deleted but still in history, author emails, commit timezones
-   - **Risky files:** `.env`, SSH keys, `.har`, `tfstate`, shell history, database dumps, and more
-2. **Contextual read by Claude.** It works through a [checklist](skills/leak-check/references/contextual-leaks.md) of what pattern matching can't see: employer and client exposure, other people's data, location and routine, identity linkage between personas, and details that are harmless alone but identifying together.
-3. **Remediation.** The [playbook](skills/leak-check/references/remediation.md) says rotate first, because deleting a pushed secret is cosmetic. It also covers rewriting history properly, stripping metadata without leaving it recoverable, and prevention setup (noreply email, pre-commit hook, push protection).
-
-A few design decisions:
-
-- **Findings are masked.** The report shows `AKIA••••••••••VB`, never the full value. Your chat transcript doesn't become a second leak.
-- **It never runs your project** and never sends your material anywhere. The scanner only reads files.
-- **It asks who you're publishing as.** Your email on your portfolio is fine. Your email in a project meant to be unlinkable to you is the worst finding in the repo. Severity depends on intent.
-- **It covers Claude's own writing.** When Claude drafts a public README or post, it checks that it didn't "helpfully" include your employer's name from earlier in the chat.
-- **It's honest about coverage.** Every report says what *wasn't* checked (no `.git` folder, video, HEIC, scanned PDFs). A clean scan isn't presented as a certificate.
+</details>
 
 ## Install
 
@@ -104,9 +103,11 @@ Just talk normally. It triggers on its own:
 
 > "Scan the full git history, I think I committed a key at some point."
 
-### Use the scanner without Claude
+> "Write a LinkedIn post about this project." (The skill checks Claude's own draft before handing it over.)
 
-`leakscan.py` is a single file with no dependencies, so it works on its own:
+### Bonus: the scanner on its own
+
+`leakscan.py` is a single file with no dependencies, so you can also use it without Claude, in a pre-commit hook or in CI:
 
 ```bash
 S=skills/leak-check/scripts/leakscan.py
@@ -121,7 +122,7 @@ It exits `1` when something reaches `--fail-on` (default `high`), so it drops st
 
 ### Personal denylist
 
-The scanner can't know that "Acme" is your employer or that your kid's name is Sam. You can tell it:
+Neither Claude nor the scanner can know that "Acme" is your employer or that your kid's name is Sam. Tell them once, and the skill offers to draft this list for you:
 
 ```text
 # ~/.config/leakscan/denylist.txt   (never commit this file)
