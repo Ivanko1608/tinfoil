@@ -1,0 +1,21 @@
+name: test
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.9", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Packaged zip is up to date
+        run: python scripts/build.py && git diff --exit-code dist/
+      - name: Eat our own dog food (scan this repo, full history)
+        run: python skills/leak-check/scripts/leakscan.py . --history --fail-on high
