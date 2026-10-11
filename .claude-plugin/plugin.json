@@ -1,10 +1,22 @@
 {
-  "name": "leak-check",
+  "name": "tinfoil",
   "version": "1.0.0",
-  "description": "Check anything before it goes public: secrets, personal data, EXIF GPS, document metadata, and everything still hiding in git history.",
-  "author": { "name": "Ivanko1608", "url": "https://github.com/Ivanko1608" },
-  "homepage": "https://github.com/Ivanko1608/claude-privacy",
-  "repository": "https://github.com/Ivanko1608/claude-privacy",
+  "description": "Your paranoid friend: Claude reviews anything you're about to make public the way someone trying to find you would, then tells you whether to ship it.",
+  "author": {
+    "name": "Ivanko1608",
+    "url": "https://github.com/Ivanko1608"
+  },
+  "homepage": "https://github.com/Ivanko1608/tinfoil",
+  "repository": "https://github.com/Ivanko1608/tinfoil",
   "license": "MIT",
-  "keywords": ["privacy", "security", "secrets", "pii", "git", "exif", "osint", "leak"]
+  "keywords": [
+    "privacy",
+    "security",
+    "secrets",
+    "pii",
+    "git",
+    "exif",
+    "osint",
+    "leak"
+  ]
 }

@@ -1,6 +1,8 @@
-# leak-check
+# tinfoil
 
-**Ask Claude "is this safe to post?" and get a real answer.**
+**Your paranoid friend reads it before the internet does.**
+
+Ask Claude "is this safe to post?" and get a real answer. You don't have to wear the hat; it wears it for you.
 
 A free, open-source [Claude skill](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview) that reviews anything you're about to make public (a repo, a screenshot, a PDF, a blog post) the way someone trying to find you would. Then it tells you whether to ship it.
 
@@ -50,11 +52,11 @@ Secret scanners are good at API keys. But most of what gets people doxxed, fired
 - **Never repeats your secrets.** Findings are masked (`AKIA••••••••••VB`), so the chat transcript doesn't become a second leak. It never runs your project or sends your material anywhere.
 - **Is honest about coverage.** Every report says what *wasn't* checked. A clean report isn't a certificate.
 
-The full checklist Claude works through is in [`references/contextual-leaks.md`](skills/leak-check/references/contextual-leaks.md). It's worth a read even if you never install anything.
+The full checklist Claude works through is in [`references/contextual-leaks.md`](skills/tinfoil/references/contextual-leaks.md). It's worth a read even if you never install anything.
 
 ## Under the hood
 
-To get the mechanical part right, the skill ships with [`leakscan.py`](skills/leak-check/scripts/leakscan.py), a dependency-free, read-only Python scanner that Claude runs first. It's built for high recall on known patterns; triage and judgment happen afterwards.
+To get the mechanical part right, the skill ships with [`leakscan.py`](skills/tinfoil/scripts/leakscan.py), a dependency-free, read-only Python scanner that Claude runs first. It's built for high recall on known patterns; triage and judgment happen afterwards.
 
 <details>
 <summary>What the scanner covers</summary>
@@ -75,20 +77,20 @@ To get the mechanical part right, the skill ships with [`leakscan.py`](skills/le
 ### Claude Code (recommended)
 
 ```text
-/plugin marketplace add Ivanko1608/claude-privacy
-/plugin install leak-check@claude-privacy
+/plugin marketplace add Ivanko1608/tinfoil
+/plugin install tinfoil@tinfoil
 ```
 
 ### Claude.ai / Claude Desktop
 
-1. Download [`dist/leak-check.zip`](dist/leak-check.zip).
+1. Download [`dist/tinfoil.zip`](dist/tinfoil.zip).
 2. Go to **Settings → Capabilities → Skills** and upload it. Code execution needs to be enabled.
 
 ### Manual
 
 ```bash
-git clone https://github.com/Ivanko1608/claude-privacy
-cp -r claude-privacy/skills/leak-check ~/.claude/skills/
+git clone https://github.com/Ivanko1608/tinfoil
+cp -r tinfoil/skills/tinfoil ~/.claude/skills/
 ```
 
 ## Use it
@@ -110,7 +112,7 @@ Just talk normally. It triggers on its own:
 `leakscan.py` is a single file with no dependencies, so you can also use it without Claude, in a pre-commit hook or in CI:
 
 ```bash
-S=skills/leak-check/scripts/leakscan.py
+S=skills/tinfoil/scripts/leakscan.py
 python3 $S path/to/repo --history        # working tree + every commit, every branch
 python3 $S path/to/repo --staged         # just what you're about to commit
 python3 $S photo.jpg report.pdf deck.pptx
@@ -148,7 +150,7 @@ Issues and PRs are welcome, especially new credential formats, national ID check
 
 ```bash
 python3 -m unittest discover -s tests -v
-python3 scripts/build.py   # rebuild dist/leak-check.zip after changing the skill
+python3 scripts/build.py   # rebuild dist/tinfoil.zip after changing the skill
 ```
 
 Test fixtures are assembled at runtime from string fragments, so this repo never contains anything secret-shaped. Please keep it that way.

@@ -16,7 +16,7 @@ import unittest
 import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SCANNER = os.path.join(HERE, "..", "skills", "leak-check", "scripts",
+SCANNER = os.path.join(HERE, "..", "skills", "tinfoil", "scripts",
                        "leakscan.py")
 
 # fragments joined at runtime

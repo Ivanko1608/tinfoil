@@ -1,9 +1,9 @@
 ---
-name: "leak-check"
+name: tinfoil
 description: Checks anything about to go public for secrets, personal data, and work information that shouldn't be online - git repos including full history, images (EXIF/GPS), PDFs, Office files, screenshots, and plain text. Use when the user is about to make a repo public, push code, publish a package or Docker image, or post a README, blog post, video description, portfolio piece, or proposal; when they ask whether something is safe to post, or want it scanned, redacted, or sanitized; and before Claude hands over anything it wrote for a public audience, even unasked.
 ---
 
-# Leak check
+# Tinfoil
 
 Goal: nothing reaches the public internet that the user would not knowingly publish. That covers credentials, personal identifiers, and the softer stuff that has no fixed shape - employer and client details, internal infrastructure, people in the user's life, location and routine, and combinations of harmless details that together identify someone.
 

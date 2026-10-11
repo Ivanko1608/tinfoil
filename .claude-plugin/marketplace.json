@@ -1,21 +1,33 @@
 {
-  "name": "claude-privacy",
-  "owner": { "name": "Ivanko1608", "url": "https://github.com/Ivanko1608" },
+  "name": "tinfoil",
+  "owner": {
+    "name": "Ivanko1608",
+    "url": "https://github.com/Ivanko1608"
+  },
   "metadata": {
-    "description": "Privacy tools for Claude. Catch leaks before you hit publish.",
+    "description": "Tinfoil: catch leaks before you hit publish.",
     "version": "1.0.0"
   },
   "plugins": [
     {
-      "name": "leak-check",
+      "name": "tinfoil",
       "source": "./",
-      "description": "Check anything before it goes public: secrets, personal data, EXIF GPS, document metadata, and everything still hiding in git history.",
+      "description": "Your paranoid friend: Claude reviews anything you're about to make public the way someone trying to find you would, then tells you whether to ship it.",
       "version": "1.0.0",
-      "author": { "name": "Ivanko1608" },
-      "homepage": "https://github.com/Ivanko1608/claude-privacy",
+      "author": {
+        "name": "Ivanko1608"
+      },
+      "homepage": "https://github.com/Ivanko1608/tinfoil",
       "license": "MIT",
       "category": "security",
-      "keywords": ["privacy", "security", "secrets", "pii", "git", "exif"]
+      "keywords": [
+        "privacy",
+        "security",
+        "secrets",
+        "pii",
+        "git",
+        "exif"
+      ]
     }
   ]
 }
