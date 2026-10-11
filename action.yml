@@ -1,0 +1,36 @@
+name: tinfoil leakscan
+description: Scan a repo (optionally its full git history) for secrets, personal data and business-sensitive details.
+author: Ivanko1608
+branding:
+  icon: shield
+  color: gray-dark
+inputs:
+  path:
+    description: Path to scan.
+    default: "."
+  history:
+    description: Also scan every commit on every branch. Needs actions/checkout with fetch-depth 0.
+    default: "true"
+  fail-on:
+    description: Lowest severity that fails the step (critical, high, medium, low, none).
+    default: high
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        SCAN_PATH: ${{ inputs.path }}
+        SCAN_HISTORY: ${{ inputs.history }}
+        SCAN_FAIL_ON: ${{ inputs.fail-on }}
+        SCANNER: ${{ github.action_path }}/skills/tinfoil/scripts/leakscan.py
+      run: |
+        args=("$SCAN_PATH" --fail-on "$SCAN_FAIL_ON")
+        if [ "$SCAN_HISTORY" = "true" ]; then
+          # A shallow clone would let the history scan pass on a single commit.
+          if [ "$(git -C "$SCAN_PATH" rev-parse --is-shallow-repository 2>/dev/null)" = "true" ]; then
+            echo "::error::Shallow clone: set fetch-depth: 0 on actions/checkout, or pass history: false."
+            exit 1
+          fi
+          args+=(--history)
+        fi
+        python3 "$SCANNER" "${args[@]}"

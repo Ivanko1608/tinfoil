@@ -1,0 +1,8 @@
+- id: tinfoil
+  name: tinfoil leakscan (staged changes)
+  description: Blocks commits that add secrets, personal data or business-sensitive details.
+  entry: skills/tinfoil/scripts/leakscan.py --staged
+  language: script
+  pass_filenames: false
+  always_run: true
+  stages: [pre-commit]

@@ -13,3 +13,6 @@ fp:e25ef8072934
 # The README's example report quotes the fictional demo repo
 fp:02c324382522
 fp:fd26867a4692
+
+# An early README listed `/Users/firstname.lastname/` as an example leak (history only)
+fp:efe45491b5fd
