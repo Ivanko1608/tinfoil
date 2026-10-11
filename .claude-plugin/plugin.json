@@ -1,0 +1,10 @@
+{
+  "name": "leak-check",
+  "version": "1.0.0",
+  "description": "Check anything before it goes public: secrets, personal data, EXIF GPS, document metadata, and everything still hiding in git history.",
+  "author": { "name": "Ivanko1608", "url": "https://github.com/Ivanko1608" },
+  "homepage": "https://github.com/Ivanko1608/claude-privacy",
+  "repository": "https://github.com/Ivanko1608/claude-privacy",
+  "license": "MIT",
+  "keywords": ["privacy", "security", "secrets", "pii", "git", "exif", "osint", "leak"]
+}

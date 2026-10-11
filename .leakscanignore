@@ -1,0 +1,12 @@
+# leak-check scanning its own repo. Every entry below is intentional.
+
+# The scanner's source *is* a list of things that look like leaks.
+skills/leak-check/scripts/leakscan.py
+# Tests assemble fake leaks on purpose (fragments only, nothing real).
+tests/*
+
+# Documentation examples
+fp:202fefa87996
+fp:15521a7d24f2
+fp:efe45491b5fd
+fp:e25ef8072934

@@ -1,0 +1,21 @@
+{
+  "name": "claude-privacy",
+  "owner": { "name": "Ivanko1608", "url": "https://github.com/Ivanko1608" },
+  "metadata": {
+    "description": "Privacy tools for Claude. Catch leaks before you hit publish.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "leak-check",
+      "source": "./",
+      "description": "Check anything before it goes public: secrets, personal data, EXIF GPS, document metadata, and everything still hiding in git history.",
+      "version": "1.0.0",
+      "author": { "name": "Ivanko1608" },
+      "homepage": "https://github.com/Ivanko1608/claude-privacy",
+      "license": "MIT",
+      "category": "security",
+      "keywords": ["privacy", "security", "secrets", "pii", "git", "exif"]
+    }
+  ]
+}
