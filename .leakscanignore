@@ -1,7 +1,7 @@
-# leak-check scanning its own repo. Every entry below is intentional.
+# tinfoil scanning its own repo. Every entry below is intentional.
 
 # The scanner's source *is* a list of things that look like leaks.
-skills/leak-check/scripts/leakscan.py
+skills/tinfoil/scripts/leakscan.py
 # Tests assemble fake leaks on purpose (fragments only, nothing real).
 tests/*
 
