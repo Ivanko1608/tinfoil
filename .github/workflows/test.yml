@@ -18,4 +18,4 @@ jobs:
       - name: Packaged zip is up to date
         run: python scripts/build.py && git diff --exit-code dist/
       - name: Eat our own dog food (scan this repo, full history)
-        run: python skills/leak-check/scripts/leakscan.py . --history --fail-on high
+        run: python skills/tinfoil/scripts/leakscan.py . --history --fail-on high
