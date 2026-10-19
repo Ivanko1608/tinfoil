@@ -122,12 +122,12 @@ class TextDetectors(unittest.TestCase):
 
     def test_home_path_matches_at_path_start(self):
         home_paths = ["/home/alice/app", "x /Users/alice/app",
-                      "cd '/home/alice'",
-                  'p="/Users/alice"', "path=/home/alice", "at:/home/alice",
-                  "open(/home/alice)", "file:///home/alice/x",
-                  "PATH=/a:/home/alice", "see `/home/alice/x`", "[/home/alice]",
-                  "<'/home/alice>", "a,/home/alice", "a|/home/alice",
-                  "gcc -I/home/alice/inc"]
+                      "cd '/home/alice'", 'p="/Users/alice"',
+                      "path=/home/alice", "at:/home/alice",
+                      "open(/home/alice)", "file:///home/alice/x",
+                      "PATH=/a:/home/alice", "see `/home/alice/x`",
+                      "[/home/alice]", "</home/alice>", "a,/home/alice",
+                      "a|/home/alice", "gcc -I/home/alice/inc"]
         for text in home_paths:
             with self.subTest(text=text):
                 self.assertIn("home_path", detectors(run("--stdin", stdin=text)))
