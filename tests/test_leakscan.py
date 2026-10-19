@@ -121,17 +121,22 @@ class TextDetectors(unittest.TestCase):
                         <= detectors(run("--stdin", stdin=text)))
 
     def test_home_path_matches_at_path_start(self):
-        starts = ["/home/alice/app", "x /Users/alice/app", "cd '/home/alice'",
+        home_paths = ["/home/alice/app", "x /Users/alice/app",
+                      "cd '/home/alice'",
                   'p="/Users/alice"', "path=/home/alice", "at:/home/alice",
-                  "open(/home/alice)", "file:///home/alice/x"]
-        for text in starts:
+                  "open(/home/alice)", "file:///home/alice/x",
+                  "PATH=/a:/home/alice", "see `/home/alice/x`", "[/home/alice]",
+                  "<'/home/alice>", "a,/home/alice", "a|/home/alice",
+                  "gcc -I/home/alice/inc"]
+        for text in home_paths:
             with self.subTest(text=text):
                 self.assertIn("home_path", detectors(run("--stdin", stdin=text)))
 
     def test_home_path_ignores_url_and_nested_paths(self):
-        paths = ["/api/budgets/home/settings", "https://example.com/home/page",
-                 "http://example.com/Users/list"]
-        for text in paths:
+        not_home_paths = ["/api/budgets/home/settings",
+                          "https://example.com/home/page",
+                          "http://example.com/Users/list"]
+        for text in not_home_paths:
             with self.subTest(text=text):
                 self.assertNotIn("home_path",
                                  detectors(run("--stdin", stdin=text)))
