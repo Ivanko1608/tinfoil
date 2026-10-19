@@ -28,12 +28,19 @@ CARD = "4" + "539 1488 0343 6467"          # Luhn-valid, not a test card
 IBAN = "GB82 " + "WEST 1234 5698 7654 32"  # the classic mod-97 valid sample
 
 
-def run(*args, stdin=None):
+def scanner_env(extra=None):
+    env = {k: v for k, v in os.environ.items()
+           if not k.startswith("PRE_COMMIT_")}
+    env.update(extra or {})
+    return env
+
+
+def run(*args, stdin=None, env=None):
     # run from an empty dir so this repo's own .leakscanignore can't leak in
     with tempfile.TemporaryDirectory() as cwd:
         r = subprocess.run([sys.executable, SCANNER, "--json", "--fail-on",
                             "none", *args], capture_output=True, text=True,
-                           input=stdin, cwd=cwd)
+                           input=stdin, cwd=cwd, env=scanner_env(env))
     if r.returncode != 0:
         raise AssertionError(r.stderr)
     return json.loads(r.stdout)
@@ -43,11 +50,17 @@ def detectors(report):
     return {f["detector"] for f in report["findings"]}
 
 
-def git(cwd, *args):
-    subprocess.run(["git", "-C", cwd, "-c", "user.name=Jane Doe",
-                    "-c", "user.email=jane.personal@gmail.com",
-                    "-c", "commit.gpgsign=false", *args],
-                   check=True, capture_output=True)
+PRIVATE_EMAIL = "jane.personal@gmail.com"
+NOREPLY_EMAIL = "12345+janedoe@users.noreply.github.com"
+NULL_SHA = "0" * 40
+
+
+def git(cwd, *args, email=PRIVATE_EMAIL):
+    r = subprocess.run(["git", "-C", cwd, "-c", "user.name=Jane Doe",
+                        "-c", f"user.email={email}",
+                        "-c", "commit.gpgsign=false", *args],
+                       check=True, capture_output=True, text=True)
+    return r.stdout.strip()
 
 
 def jpeg_with_gps(lat=(40, 25, 1), lon=(3, 42, 13)):
@@ -194,6 +207,108 @@ class FileAndRepo(unittest.TestCase):
         r = subprocess.run([sys.executable, SCANNER, p, "--fail-on", "none"],
                            capture_output=True)
         self.assertEqual(r.returncode, 0)
+
+
+class PushMode(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.d = self.tmp.name
+        git(self.d, "init", "-q", "-b", "main")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def commit(self, name, text, email=PRIVATE_EMAIL):
+        with open(os.path.join(self.d, name), "w") as fh:
+            fh.write(text)
+        git(self.d, "add", name)
+        git(self.d, "commit", "-qm", f"add {name}", email=email)
+        return git(self.d, "rev-parse", "HEAD")
+
+    def mark_pushed(self, sha):
+        git(self.d, "update-ref", "refs/remotes/origin/main", sha)
+
+    def push_line(self, sha):
+        return f"refs/heads/main {sha} refs/heads/main {NULL_SHA}\n"
+
+    def identities(self, report):
+        return [f for f in report["findings"]
+                if f["detector"] == "commit_identity"]
+
+    def test_private_email_in_pushed_range_is_high(self):
+        base = self.commit("a.txt", "a\n", email=NOREPLY_EMAIL)
+        self.mark_pushed(base)
+        sha = self.commit("b.txt", "b\n")
+
+        rep = run(self.d, "--push", stdin=self.push_line(sha))
+
+        found = self.identities(rep)
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["severity"], "high")
+        self.assertEqual(found[0]["where"], "push")
+        self.assertEqual(rep["commits_scanned"], 1)
+
+    def test_private_email_fails_push_at_default_level(self):
+        sha = self.commit("a.txt", "a\n")
+
+        r = subprocess.run([sys.executable, SCANNER, self.d, "--push"],
+                           input=self.push_line(sha), capture_output=True,
+                           text=True, env=scanner_env())
+
+        self.assertEqual(r.returncode, 1)
+
+    def test_commit_already_on_remote_is_skipped(self):
+        sha = self.commit("a.txt", "a\n")
+        self.mark_pushed(sha)
+
+        rep = run(self.d, "--push", stdin=self.push_line(sha))
+
+        self.assertEqual(self.identities(rep), [])
+        self.assertEqual(rep["commits_scanned"], 0)
+
+    def test_noreply_email_passes(self):
+        sha = self.commit("a.txt", "a\n", email=NOREPLY_EMAIL)
+
+        rep = run(self.d, "--push", stdin=self.push_line(sha))
+
+        self.assertEqual(self.identities(rep), [])
+        self.assertEqual(rep["commits_scanned"], 1)
+
+    def test_branch_deletion_passes(self):
+        self.commit("a.txt", "a\n")
+        deletion = f"(delete) {NULL_SHA} refs/heads/old {NULL_SHA}\n"
+
+        rep = run(self.d, "--push", stdin=deletion)
+
+        self.assertEqual(rep["findings"], [])
+        self.assertEqual(rep["commits_scanned"], 0)
+
+    def test_secret_in_pushed_commit(self):
+        sha = self.commit("config.py", f'TOKEN = "{GH}"\n', email=NOREPLY_EMAIL)
+
+        rep = run(self.d, "--push", stdin=self.push_line(sha))
+
+        self.assertIn("github_token", detectors(rep))
+
+    def test_pre_commit_env_vars(self):
+        base = self.commit("a.txt", "a\n", email=NOREPLY_EMAIL)
+        self.mark_pushed(base)
+        sha = self.commit("b.txt", "b\n")
+        env = {"PRE_COMMIT_REMOTE_NAME": "origin", "PRE_COMMIT_FROM_REF": base,
+               "PRE_COMMIT_TO_REF": sha}
+
+        rep = run(self.d, "--push", env=env)
+
+        self.assertEqual(len(self.identities(rep)), 1)
+
+    def test_pre_commit_env_vars_for_root_commit(self):
+        self.commit("a.txt", "a\n")
+        env = {"PRE_COMMIT_REMOTE_NAME": "origin",
+               "PRE_COMMIT_LOCAL_BRANCH": "refs/heads/main"}
+
+        rep = run(self.d, "--push", env=env)
+
+        self.assertEqual(len(self.identities(rep)), 1)
 
 
 if __name__ == "__main__":
