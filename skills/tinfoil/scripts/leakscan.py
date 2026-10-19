@@ -423,7 +423,8 @@ DETECTORS = [
       r"для служебного пользования|confidencial|uso interno)\b"),
     # --- identity / location -----------------------------------------------
     D("home_path", "identity", "medium",
-      r"(?:/home/|/Users/|[A-Za-z]:\\{1,2}Users\\{1,2})([A-Za-z0-9._-]+)",
+      r"(?:(?:(?<![^\s\"'=:(])|(?<=file://))(?:/home/|/Users/)"
+      r"|[A-Za-z]:\\{1,2}Users\\{1,2})([A-Za-z0-9._-]+)",
       v_home),
     D("shell_prompt", "identity", "medium",
       r"\b([a-z_][a-z0-9_-]{1,31})@([A-Za-z0-9-]{2,63}):(?:~|/)", v_prompt),

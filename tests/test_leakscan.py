@@ -120,6 +120,26 @@ class TextDetectors(unittest.TestCase):
         self.assertTrue({"home_path", "shell_prompt", "internal_hostname"}
                         <= detectors(run("--stdin", stdin=text)))
 
+    def test_home_path_matches_at_path_start(self):
+        starts = ["/home/alice/app", "x /Users/alice/app", "cd '/home/alice'",
+                  'p="/Users/alice"', "path=/home/alice", "at:/home/alice",
+                  "open(/home/alice)", "file:///home/alice/x"]
+        for text in starts:
+            with self.subTest(text=text):
+                self.assertIn("home_path", detectors(run("--stdin", stdin=text)))
+
+    def test_home_path_ignores_url_and_nested_paths(self):
+        paths = ["/api/budgets/home/settings", "https://example.com/home/page",
+                 "http://example.com/Users/list"]
+        for text in paths:
+            with self.subTest(text=text):
+                self.assertNotIn("home_path",
+                                 detectors(run("--stdin", stdin=text)))
+
+    def test_home_path_matches_windows_users_dir(self):
+        text = "C:\\Users\\alice\\Documents"
+        self.assertIn("home_path", detectors(run("--stdin", stdin=text)))
+
     def test_denylist(self):
         with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as fh:
             fh.write("# work\nAcmeCorp\nre:proj-\\d+\n")
