@@ -244,7 +244,12 @@ GENERIC_USERS = {"user", "username", "runner", "ubuntu", "node", "app", "root",
                  "builder", "build", "travis", "circleci", "linuxbrew"}
 
 
+PATH_SEGMENT_BEFORE = re.compile(r"/[\w.%@-]+$")
+
+
 def v_home(m, line):
+    if PATH_SEGMENT_BEFORE.search(line, 0, m.start()):
+        return None
     u = m.group(1).lower()
     if u in GENERIC_USERS or u.startswith(("$", "%", "<", "{")):
         return None
