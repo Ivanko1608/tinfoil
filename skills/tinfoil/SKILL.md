@@ -59,13 +59,14 @@ The script lives next to this file; call it by full path.
 S=<skill-dir>/scripts/leakscan.py
 python3 $S <repo> --history                 # working tree + every commit on every branch
 python3 $S <repo> --staged                  # only what's staged (pre-commit use)
+python3 $S <repo> --push                    # commits not yet on any remote (pre-push use)
 python3 $S report.pdf photo.jpg deck.pptx   # individual files, metadata included
 python3 $S --stdin < draft.md               # a piece of text
 # common flags: --denylist PATH  --json  --fail-on {critical,high,medium,low,none}
 #               --max-commits N  --include-deps  --reveal
 ```
 
-Exit code 1 when anything reaches `--fail-on` (default `high`). Files ignored by git are reported as `info`/`gitignored`, since git won't publish them - but they matter if the folder ships another way (zip, Docker build context, screen share). Large multi-author repos collapse commit identities into one summary line.
+Exit code 1 when anything reaches `--fail-on` (default `high`). Files ignored by git are reported as `info`/`gitignored`, since git won't publish them - but they matter if the folder ships another way (zip, Docker build context, screen share). Commit identities with a non-noreply email are `high`; only `--history` and `--push` see them, never `--staged`. Large multi-author repos collapse commit identities into one summary line.
 
 On claude.ai: uploads are in `/mnt/user-data/uploads`. A repo arriving as a zip often has no `.git`, which means history can't be checked - say so in the report rather than implying it was. Public GitHub repos can be cloned (`git clone --depth 500` is usually enough; say if history was truncated).
 

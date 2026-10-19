@@ -131,6 +131,7 @@ Just talk normally. It triggers on its own:
 S=skills/tinfoil/scripts/leakscan.py
 python3 $S path/to/repo --history        # working tree + every commit, every branch
 python3 $S path/to/repo --staged         # just what you're about to commit
+python3 $S path/to/repo --push           # commits a push adds (reads pre-push stdin)
 python3 $S photo.jpg report.pdf deck.pptx
 python3 $S --stdin < blog-post.md
 python3 $S . --json --fail-on medium     # for CI
@@ -140,14 +141,26 @@ It exits `1` when something reaches `--fail-on` (default `high`), so it drops st
 
 #### As a pre-commit hook
 
-With [pre-commit](https://pre-commit.com), add this to `.pre-commit-config.yaml`. It scans only what you're about to commit:
+With [pre-commit](https://pre-commit.com), add this to `.pre-commit-config.yaml`. `tinfoil` scans what you're about to commit; `tinfoil-push` scans the commits you're about to push:
 
 ```yaml
 repos:
   - repo: https://github.com/Ivanko1608/tinfoil
-    rev: v1.0.0
+    rev: v1.1.0
     hooks:
       - id: tinfoil
+      - id: tinfoil-push
+```
+
+Then run `pre-commit install --hook-type pre-commit --hook-type pre-push`.
+
+Staged changes never include commit metadata, so only a push or history scan catches a private author or committer email. A non-noreply commit email is reported as `high`. The push scan checks only commits that aren't on any remote yet, so old commits don't block every push.
+
+pre-commit passes the push to hooks one ref at a time and checks only the first ref of a multi-branch push. To cover every ref, call the scanner from a plain `.git/hooks/pre-push`, which gets the full push on stdin:
+
+```sh
+#!/bin/sh
+exec python3 path/to/leakscan.py . --push
 ```
 
 #### As a GitHub Action
@@ -156,10 +169,10 @@ repos:
 - uses: actions/checkout@v4
   with:
     fetch-depth: 0          # needed to scan history; the action refuses a shallow clone
-- uses: Ivanko1608/tinfoil@v1.0.0
+- uses: Ivanko1608/tinfoil@v1.1.0
   with:
     history: "true"         # every commit, every branch
-    fail-on: high
+    fail-on: high           # private commit emails are high, so this catches them
 ```
 
 ### Personal denylist

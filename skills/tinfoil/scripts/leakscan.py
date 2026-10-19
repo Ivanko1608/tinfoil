@@ -11,6 +11,8 @@ Usage:
   leakscan.py PATH [PATH ...]           scan files/folders (git-aware)
   leakscan.py REPO --history            also scan every commit on every branch
   leakscan.py REPO --staged             scan only what is staged (pre-commit)
+  leakscan.py REPO --push               scan only commits a push adds, read
+                                        from pre-push stdin (pre-push hook)
   echo "text" | leakscan.py --stdin     scan text (e.g. a draft before posting)
 
 Options:
@@ -863,57 +865,121 @@ def scan_diff_stream(sc, lines, where_prefix):
             lineno += 1
 
 
-def scan_history(sc, top, max_commits):
-    args = ["log", "--all", "-p", "--no-color", "--no-ext-diff", "--unified=0",
+NOREPLY_EMAIL_DOMAINS = ("noreply.github.com", "@users.noreply.gitlab.com")
+NULL_SHA = re.compile(r"0+")
+COMMIT_SHA = re.compile(r"[0-9a-f]{7,64}")
+
+
+def is_noreply_email(email):
+    local = email.rpartition("@")[0].lower()
+    return email.endswith(NOREPLY_EMAIL_DOMAINS) or \
+        local.startswith(("noreply", "no-reply", "donotreply"))
+
+
+def scan_commits(sc, top, revs, where_prefix, max_commits=0):
+    args = ["log", *revs, "-p", "--no-color", "--no-ext-diff", "--unified=0",
             "--format=__LEAKSCAN_COMMIT__ %H"]
     if max_commits:
         args.insert(1, f"-n{max_commits}")
     proc = subprocess.Popen(["git", "-C", top, "-c", "core.quotepath=off", *args],
                             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     lines = (l.decode("utf-8", "replace").rstrip("\n") for l in proc.stdout)
-    scan_diff_stream(sc, lines, "history:")
+    scan_diff_stream(sc, lines, where_prefix)
     proc.wait()
 
-    # files ever added (incl. later deleted)
-    out = git(top, "log", "--all", "--format=", "--name-only", "--diff-filter=A")
-    if out:
-        for p in sorted(set(filter(None, out.splitlines()))):
-            rule = file_rule(p)
-            if rule and not os.path.exists(os.path.join(top, p)):
-                sc.add(Finding(rule[0], "file", "risky_file", p, 0,
-                               os.path.basename(p),
-                               rule[1] + " - deleted from HEAD but still in "
-                               "history", "history"))
 
-    # commit identities and timezones
-    out = git(top, "log", "--all", "--format=%an%x1f%ae%x1f%cn%x1f%ce%x1f%ad",
-              "--date=format:%z")
-    if out:
-        ids, tzs = set(), Counter()
-        for l in out.splitlines():
-            parts = l.split("\x1f")
-            if len(parts) != 5:
-                continue
-            ids.add((parts[0], parts[1]))
-            ids.add((parts[2], parts[3]))
-            tzs[parts[4]] += 1
-        ids = {(n, em) for n, em in ids if em and not em.endswith(
-            ("noreply.github.com", "@users.noreply.gitlab.com"))}
-        if len(ids) > 8:
-            sc.add(Finding("info", "identity", "commit_identity", ".git", 0,
-                           f"{len(ids)} identities", "multi-contributor history;"
-                           " run `git log --format='%an <%ae>' | sort -u` and "
-                           "check only your own entries", "history"))
-            ids = set()
-        for name, email in sorted(ids):
-            sc.add(Finding("medium", "identity", "commit_identity", ".git", 0,
-                           f"{name} <{email}>", "author/committer identity is "
-                           "published with every commit", "history"))
-        if tzs:
-            sc.add(Finding("info", "location", "commit_timezones", ".git", 0,
-                           ", ".join(f"{k}x{v}" for k, v in tzs.most_common()),
-                           "commit timestamps reveal timezone(s) and "
-                           "working hours", "history"))
+def get_added_paths(top, revs):
+    out = git(top, "log", *revs, "--format=", "--name-only", "--diff-filter=A")
+    return sorted(set(filter(None, (out or "").splitlines())))
+
+
+def scan_identities(sc, top, revs, where):
+    out = git(top, "log", *revs, "--format=%an%x1f%ae%x1f%cn%x1f%ce")
+    if not out:
+        return
+    ids = set()
+    for l in out.splitlines():
+        parts = l.split("\x1f")
+        if len(parts) != 4:
+            continue
+        ids.add((parts[0], parts[1]))
+        ids.add((parts[2], parts[3]))
+    ids = {(n, em) for n, em in ids if em and not is_noreply_email(em)}
+    if len(ids) > 8:
+        sc.add(Finding("info", "identity", "commit_identity", ".git", 0,
+                       f"{len(ids)} identities", "multi-contributor history;"
+                       " run `git log --format='%an <%ae>' | sort -u` and "
+                       "check only your own entries", where))
+        return
+    for name, email in sorted(ids):
+        sc.add(Finding("high", "identity", "commit_identity", ".git", 0,
+                       f"{name} <{email}>", "author/committer email is "
+                       "published with every commit; use a noreply address",
+                       where))
+
+
+def scan_timezones(sc, top, revs, where):
+    out = git(top, "log", *revs, "--format=%ad", "--date=format:%z")
+    tzs = Counter(filter(None, (out or "").splitlines()))
+    if tzs:
+        sc.add(Finding("info", "location", "commit_timezones", ".git", 0,
+                       ", ".join(f"{k}x{v}" for k, v in tzs.most_common()),
+                       "commit timestamps reveal timezone(s) and "
+                       "working hours", where))
+
+
+def scan_history(sc, top, max_commits):
+    revs = ["--all"]
+    scan_commits(sc, top, revs, "history:", max_commits)
+    for p in get_added_paths(top, revs):
+        rule = file_rule(p)
+        if rule and not os.path.exists(os.path.join(top, p)):
+            sc.add(Finding(rule[0], "file", "risky_file", p, 0,
+                           os.path.basename(p),
+                           rule[1] + " - deleted from HEAD but still in "
+                           "history", "history"))
+    scan_identities(sc, top, revs, "history")
+    scan_timezones(sc, top, revs, "history")
+
+
+def get_pushed_shas(push_lines):
+    """Local shas from git pre-push stdin lines, skipping branch deletions."""
+    shas = []
+    for line in push_lines:
+        parts = line.split()
+        if len(parts) != 4:
+            continue
+        local_sha = parts[1]
+        if NULL_SHA.fullmatch(local_sha) or not COMMIT_SHA.fullmatch(local_sha):
+            continue
+        shas.append(local_sha)
+    return shas
+
+
+def get_pushed_shas_from_pre_commit(top, environ):
+    """pre-commit eats the hook's stdin and passes one pushed ref in env vars.
+
+    It leaves PRE_COMMIT_TO_REF unset when the push includes a root commit.
+    """
+    ref = environ.get("PRE_COMMIT_TO_REF") or environ.get("PRE_COMMIT_LOCAL_BRANCH")
+    if not ref or ref.startswith("-"):
+        return []
+    out = git(top, "rev-parse", "--verify", "--quiet", ref + "^{commit}")
+    return [out.strip()] if out else []
+
+
+def scan_push(sc, top, shas):
+    """Scan only the commits a push adds: those not yet on any remote."""
+    if not shas:
+        return
+    revs = [*shas, "--not", "--remotes"]
+    scan_commits(sc, top, revs, "push:")
+    for p in get_added_paths(top, revs):
+        rule = file_rule(p)
+        if rule:
+            sc.add(Finding(rule[0], "file", "risky_file", p, 0,
+                           os.path.basename(p), rule[1], "push"))
+    scan_identities(sc, top, revs, "push")
 
 
 def scan_staged(sc, top):
@@ -1012,12 +1078,19 @@ def mask(s, reveal):
     return s[:4] + "\u2022" * min(n - 6, 10) + s[-2:] + f" ({n} chars)"
 
 
+def read_pushed_shas(top):
+    if "PRE_COMMIT_REMOTE_NAME" in os.environ:
+        return get_pushed_shas_from_pre_commit(top, os.environ)
+    return get_pushed_shas(sys.stdin.read().splitlines())
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("paths", nargs="*")
     ap.add_argument("--history", action="store_true")
     ap.add_argument("--staged", action="store_true")
+    ap.add_argument("--push", action="store_true")
     ap.add_argument("--stdin", action="store_true")
     ap.add_argument("--denylist")
     ap.add_argument("--json", action="store_true")
@@ -1046,6 +1119,10 @@ def main():
         if a.staged:
             if top:
                 scan_staged(sc, top)
+            continue
+        if a.push:
+            if top:
+                scan_push(sc, top, read_pushed_shas(top))
             continue
         files = list(walk(root_abs, a.include_deps))
         gitignored = set()

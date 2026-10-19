@@ -6,3 +6,11 @@
   pass_filenames: false
   always_run: true
   stages: [pre-commit]
+- id: tinfoil-push
+  name: tinfoil leakscan (commits being pushed)
+  description: Blocks pushes whose new commits add secrets or personal data, or carry a private author or committer email.
+  entry: skills/tinfoil/scripts/leakscan.py --push
+  language: script
+  pass_filenames: false
+  always_run: true
+  stages: [pre-push]
