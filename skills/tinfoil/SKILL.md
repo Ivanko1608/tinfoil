@@ -58,6 +58,7 @@ The script lives next to this file; call it by full path.
 ```bash
 S=<skill-dir>/scripts/leakscan.py
 python3 $S <repo> --history                 # working tree + every commit on every branch
+python3 $S <repo> --history --history-rev HEAD   # only commits reachable from HEAD
 python3 $S <repo> --staged                  # only what's staged (pre-commit use)
 python3 $S <repo> --push                    # commits not yet on any remote (pre-push use)
 python3 $S report.pdf photo.jpg deck.pptx   # individual files, metadata included

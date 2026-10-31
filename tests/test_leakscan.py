@@ -212,6 +212,36 @@ class FileAndRepo(unittest.TestCase):
         ids = [f for f in rep["findings"] if f["detector"] == "commit_identity"]
         self.assertTrue(ids)
 
+    def test_history_rev_skips_other_branches(self):
+        git(self.d, "init", "-q", "-b", "main")
+        self.write("README.md", "# demo\n")
+        git(self.d, "add", ".")
+        git(self.d, "commit", "-qm", "init")
+        git(self.d, "switch", "-q", "-c", "other")
+        self.write("config.py", f"AWS_ACCESS_KEY_ID = '{AWS}'\n")
+        git(self.d, "add", ".")
+        git(self.d, "commit", "-qm", "key on another branch")
+        git(self.d, "switch", "-q", "main")
+
+        every_branch = run(self.d, "--history")
+        main_only = run(self.d, "--history", "--history-rev", "main")
+
+        self.assertIn("aws_access_key", detectors(every_branch))
+        self.assertNotIn("aws_access_key", detectors(main_only))
+
+    def test_history_rev_rejects_unknown_rev(self):
+        git(self.d, "init", "-q")
+        self.write("README.md", "# demo\n")
+        git(self.d, "add", ".")
+        git(self.d, "commit", "-qm", "init")
+
+        r = subprocess.run([sys.executable, SCANNER, self.d, "--history",
+                            "--history-rev", "no-such-branch"],
+                           capture_output=True, text=True)
+
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("not a commit", r.stderr)
+
     def test_staged_mode(self):
         git(self.d, "init", "-q")
         self.write("config.py", f'TOKEN = "{GH}"\n')

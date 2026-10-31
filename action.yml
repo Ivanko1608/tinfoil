@@ -11,6 +11,9 @@ inputs:
   history:
     description: Also scan every commit on every branch. Needs actions/checkout with fetch-depth 0.
     default: "true"
+  history-rev:
+    description: Scan only the history reachable from this commit, branch or tag instead of every branch. On a pull request, HEAD keeps other branches' commits out of its result.
+    default: ""
   fail-on:
     description: Lowest severity that fails the step (critical, high, medium, low, none).
     default: high
@@ -21,6 +24,7 @@ runs:
       env:
         SCAN_PATH: ${{ inputs.path }}
         SCAN_HISTORY: ${{ inputs.history }}
+        SCAN_HISTORY_REV: ${{ inputs.history-rev }}
         SCAN_FAIL_ON: ${{ inputs.fail-on }}
         SCANNER: ${{ github.action_path }}/skills/tinfoil/scripts/leakscan.py
       run: |
@@ -32,5 +36,8 @@ runs:
             exit 1
           fi
           args+=(--history)
+          if [ -n "$SCAN_HISTORY_REV" ]; then
+            args+=(--history-rev "$SCAN_HISTORY_REV")
+          fi
         fi
         python3 "$SCANNER" "${args[@]}"
