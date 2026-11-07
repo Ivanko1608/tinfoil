@@ -10,6 +10,8 @@ location data, and file metadata (EXIF GPS, document authors, tracked changes).
 Usage:
   leakscan.py PATH [PATH ...]           scan files/folders (git-aware)
   leakscan.py REPO --history            also scan every commit on every branch
+  leakscan.py REPO --history --history-rev HEAD
+                                        scan only commits reachable from HEAD
   leakscan.py REPO --staged             scan only what is staged (pre-commit)
   leakscan.py REPO --push               scan only commits a push adds, read
                                         from pre-push stdin (pre-push hook)
@@ -23,6 +25,8 @@ Options:
   --reveal          print raw matches instead of masked ones (local use only)
   --fail-on LEVEL   exit 1 if any finding >= LEVEL (default: high; 'none' = never)
   --max-commits N   cap history scan depth
+  --history-rev REV scan history reachable from REV instead of every branch
+                    (CI on a pull request: other branches' commits aren't its own)
   --include-deps    also scan node_modules/, target/, vendor/, dist/ ...
 
 Suppress false positives with a .leakscanignore file in the scan root / repo
@@ -933,8 +937,8 @@ def scan_timezones(sc, top, revs, where):
                        "working hours", where))
 
 
-def scan_history(sc, top, max_commits):
-    revs = ["--all"]
+def scan_history(sc, top, max_commits, rev=None):
+    revs = [rev] if rev else ["--all"]
     scan_commits(sc, top, revs, "history:", max_commits)
     for p in get_added_paths(top, revs):
         rule = file_rule(p)
@@ -945,6 +949,12 @@ def scan_history(sc, top, max_commits):
                            "history", "history"))
     scan_identities(sc, top, revs, "history")
     scan_timezones(sc, top, revs, "history")
+
+
+def is_commit(top, rev):
+    if rev.startswith("-"):
+        return False
+    return git(top, "rev-parse", "--verify", "--quiet", rev + "^{commit}") is not None
 
 
 def get_pushed_shas(push_lines):
@@ -1103,8 +1113,11 @@ def main():
     ap.add_argument("--fail-on", default="high",
                     choices=["critical", "high", "medium", "low", "none"])
     ap.add_argument("--max-commits", type=int, default=0)
+    ap.add_argument("--history-rev")
     ap.add_argument("--include-deps", action="store_true")
     a = ap.parse_args()
+    if a.history_rev and not a.history:
+        ap.error("--history-rev needs --history")
 
     if not a.paths and not a.stdin:
         a.paths = ["."]
@@ -1152,7 +1165,9 @@ def main():
 
     if a.history:
         for top in tops:
-            scan_history(sc, top, a.max_commits)
+            if a.history_rev and not is_commit(top, a.history_rev):
+                sys.exit(f"leakscan: --history-rev {a.history_rev!r} is not a commit in {top}")
+            scan_history(sc, top, a.max_commits, a.history_rev)
 
     rules = load_ignore(ignore_root)
     seen, findings = set(), []

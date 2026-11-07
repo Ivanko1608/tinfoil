@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/Ivanko1608/tinfoil/actions/workflows/test.yml"><img src="https://github.com/Ivanko1608/tinfoil/actions/workflows/test.yml/badge.svg" alt="tests"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
-  <img src="https://img.shields.io/badge/python-3.9%2B%2C%20stdlib%20only-informational" alt="Python 3.9+, stdlib only">
+  <img src="https://img.shields.io/badge/python-3.10%2B%2C%20stdlib%20only-informational" alt="Python 3.10+, stdlib only">
   <a href="https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview"><img src="https://img.shields.io/badge/Claude-skill-d97757" alt="Claude skill"></a>
 </p>
 
@@ -130,6 +130,7 @@ Just talk normally. It triggers on its own:
 ```bash
 S=skills/tinfoil/scripts/leakscan.py
 python3 $S path/to/repo --history        # working tree + every commit, every branch
+python3 $S path/to/repo --history --history-rev HEAD   # only commits reachable from HEAD
 python3 $S path/to/repo --staged         # just what you're about to commit
 python3 $S path/to/repo --push           # commits a push adds (reads pre-push stdin)
 python3 $S photo.jpg report.pdf deck.pptx
@@ -146,7 +147,7 @@ With [pre-commit](https://pre-commit.com), add this to `.pre-commit-config.yaml`
 ```yaml
 repos:
   - repo: https://github.com/Ivanko1608/tinfoil
-    rev: v1.1.0
+    rev: v1.2.0
     hooks:
       - id: tinfoil
       - id: tinfoil-push
@@ -169,9 +170,10 @@ exec python3 path/to/leakscan.py . --push
 - uses: actions/checkout@v4
   with:
     fetch-depth: 0          # needed to scan history; the action refuses a shallow clone
-- uses: Ivanko1608/tinfoil@v1.1.0
+- uses: Ivanko1608/tinfoil@v1.2.0
   with:
     history: "true"         # every commit, every branch
+    history-rev: HEAD       # optional: only what HEAD contains, so another branch's leak can't fail this PR
     fail-on: high           # private commit emails are high, so this catches them
 ```
 
