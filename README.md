@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/Ivanko1608/tinfoil/actions/workflows/test.yml"><img src="https://github.com/Ivanko1608/tinfoil/actions/workflows/test.yml/badge.svg" alt="tests"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
-  <img src="https://img.shields.io/badge/python-3.9%2B%2C%20stdlib%20only-informational" alt="Python 3.9+, stdlib only">
+  <img src="https://img.shields.io/badge/python-3.10%2B%2C%20stdlib%20only-informational" alt="Python 3.10+, stdlib only">
   <a href="https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview"><img src="https://img.shields.io/badge/Claude-skill-d97757" alt="Claude skill"></a>
 </p>
 
